@@ -9,7 +9,7 @@ import librosa
 
 class MimiiDataset(Dataset):
     def __init__(self, audio_dir, n_mel=128):
-        super(Dataset, self).__init__()
+        super(MimiiDataset, self).__init__()
         self.audio_dir = audio_dir
         self.n_mel = n_mel
 
@@ -91,7 +91,6 @@ class MimiiDataset(Dataset):
             hop_length=512,
             power=2.0,
         )
-        # features = features.reshape(-1, features.shape[0], features.shape[1])
 
         return features
 

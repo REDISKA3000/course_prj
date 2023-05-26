@@ -87,13 +87,10 @@ class MimiiDataset(Dataset):
         res = np.where(tensor == 0, 1E-19, tensor)
         return torch.from_numpy(res)
 
-    def spectrogrameToImage(self, waveform):
-        specgram = torchaudio.transforms.MelSpectrogram(n_fft=1024,
-                                                        win_length=1024,
-                                                        hop_length=512,
-                                                        power=2,
-                                                        normalized=True,
-                                                        n_mels=128)(waveform)
+    def spectrogrameToImage(self, specgram):
+        # specgram = torchaudio.transforms.MelSpectrogram(n_fft=1024, win_length=1024,
+        #                                                 hop_length=512, power=2,
+        #                                                 normalized=True, n_mels=128)(waveform )
         specgram = self.make0min(specgram)
         specgram = specgram.log2()[0, :, :].numpy()
 
@@ -104,12 +101,25 @@ class MimiiDataset(Dataset):
         specgramImage = tr2image(specgram)
         return specgramImage
 
+    def get_logmelspectrogram(self, melspec):
+        logmel = torchaudio.transforms.AmplitudeToDB()(melspec)
+        return logmel
+
+    def get_melspectrogram(self, waveform):
+        melspec = torchaudio.transforms.MelSpectrogram(n_fft=1024,
+                                                       win_length=1024,
+                                                       hop_length=512, power=2,
+                                                       normalized=True,
+                                                       n_mels=128)(waveform)
+        return melspec
+
     def _derive_data(self, file_list):
         tr2tensor = transforms.Compose([transforms.PILToTensor()])
         data = []
         for i in range(len(file_list)):
             y, sr = torchaudio.load(file_list[i])
-            spec = self.spectrogrameToImage(y)
+            spec = self.get_melspectrogram(y)
+            spec = self.spectrogrameToImage(spec)
             spec = spec.convert('RGB')
             vectors = tr2tensor(spec)
 

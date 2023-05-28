@@ -8,10 +8,20 @@ import librosa
 
 
 class MimiiDataset(Dataset):
-    def __init__(self, audio_dir, n_mel=128):
+    def __init__(self, audio_dir, n_fft=1024, win_length=1024,
+                 hop_length=512, power=2, n_mels=128, pad_mode='reflect',
+                 sr=16000, center=True, norm=None):
         super(MimiiDataset, self).__init__()
         self.audio_dir = audio_dir
-        self.n_mel = n_mel
+        self.n_mels = n_mels
+        self.n_fft = n_fft
+        self.win_length = win_length
+        self.hop_length = hop_length
+        self.power = power
+        self.pad_mode = pad_mode
+        self.sr = sr
+        self.center = center
+        self.norm = norm
 
     def get_data(self, device):
         self.train_files, self.train_labels = self._train_file_list(device)
@@ -101,17 +111,66 @@ class MimiiDataset(Dataset):
         specgramImage = tr2image(specgram)
         return specgramImage
 
-    def get_logmelspectrogram(self, melspec):
-        logmel = torchaudio.transforms.AmplitudeToDB()(melspec)
-        return logmel
+    def get_logmelspectrogram(self, waveform):
+        melspec = librosa.feature.melspectrogram(
+            n_fft=self.n_fft, win_length=self.win_length,
+            hop_length=self.hop_length,
+            power=self.power, n_mels=self.n_mels, pad_mode=self.pad_mode,
+            sr=self.sr,
+            center=self.center, norm=self.norm, htk=True,
+            y=waveform.numpy()
+        )  # melspectrogram
+
+        logmelspec = librosa.power_to_db(melspec)  # log-melspectrogram
+
+        return logmelspec
 
     def get_melspectrogram(self, waveform):
-        melspec = torchaudio.transforms.MelSpectrogram(n_fft=1024,
-                                                       win_length=1024,
-                                                       hop_length=512, power=2,
-                                                       normalized=True,
-                                                       n_mels=128)(waveform)
+        melspec = librosa.feature.melspectrogram(
+            n_fft=self.n_fft, win_length=self.win_length,
+            hop_length=self.hop_length,
+            power=self.power, n_mels=self.n_mels, pad_mode=self.pad_mode,
+            sr=self.sr,
+            center=self.center, norm=self.norm, htk=True,
+            y=waveform.numpy()
+        )  # melspectrogram
+
         return melspec
+
+    def get_mfcc(self, waveform):
+        mfcc = librosa.feature.mfcc(
+            n_fft=self.n_fft, win_length=self.win_length,
+            hop_length=self.hop_length, pad_mode=self.pad_mode, sr=self.sr,
+            center=self.center, norm=self.norm, n_mfcc=40,
+            y=waveform.numpy()
+        )
+
+        return mfcc
+
+    def get_chroma_stft(self, waveform):
+        stft = librosa.feature.chroma_stft(
+            n_fft=self.n_fft, win_length=self.win_length,
+            hop_length=self.hop_length, pad_mode=self.pad_mode, sr=self.sr,
+            center=self.center, norm=self.norm, n_chroma=12,
+            y=waveform.numpy()
+        )
+
+        return stft
+
+    def get_spectral_contrast(self, waveform):
+        spec_contrast = librosa.feature.spectral_contrast(
+            n_fft=self.n_fft, win_length=self.win_length, center=self.center,
+            hop_length=self.hop_length, pad_mode=self.pad_mode, sr=self.sr,
+            y=waveform.numpy()
+        )
+
+        return spec_contrast
+
+    def get_tonnetz(self, waveform):
+        harmonic = librosa.effects.harmonic(waveform.numpy())
+        tonnetz = librosa.feature.tonnetz(y=harmonic, sr=self.sr)
+
+        return tonnetz
 
     def _derive_data(self, file_list):
         tr2tensor = transforms.Compose([transforms.PILToTensor()])

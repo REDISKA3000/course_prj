@@ -11,6 +11,7 @@ class MimiiDataset(Dataset):
     def __init__(self, audio_dir, n_fft=1024, win_length=1024,
                  hop_length=512, power=2, n_mels=128, pad_mode='reflect',
                  sr=16000, center=True, norm=None):
+
         super(MimiiDataset, self).__init__()
         self.audio_dir = audio_dir
         self.n_mels = n_mels
@@ -23,24 +24,28 @@ class MimiiDataset(Dataset):
         self.center = center
         self.norm = norm
 
-    def get_data(self, device):
-        self.train_files, self.train_labels = self._train_file_list(device)
-        self.test_files, self.test_labels = self._test_file_list(device)
+    def get_files(self):
+        return self.train_files, self.test_files
 
-        self.train_data = self._derive_data(self.train_files.copy())
-        self.test_data = self._derive_data(self.test_files.copy())
+    def get_data(self, device, id):
+
+        self.train_files, self.train_labels = self._train_file_list(device, id)
+        self.test_files, self.test_labels = self._test_file_list(device, id)
+
+        self.train_data = self.get_audios(self.train_files)
+        self.test_data = self.get_audios(self.test_files)
 
         return self.train_data, self.test_data, self.train_labels, self.test_labels
 
-    def _train_file_list(self, device):
+    def _train_file_list(self, device, id):
         query = os.path.abspath(
-            f"{self.audio_dir}/{device}/train/*_normal_*.wav"
+            f"{self.audio_dir}/{device}/train/normal_id_0{id}*.wav"
         )
         train_normal_files = sorted(glob.glob(query))
         train_normal_labels = np.zeros(len(train_normal_files))
 
         query = os.path.abspath(
-            f"{self.audio_dir}/{device}/train/*_anomaly_*.wav"
+            f"{self.audio_dir}/{device}/train/anomaly_id_0{id}*.wav"
         )
         train_anomaly_files = sorted(glob.glob(query))
         train_anomaly_labels = np.ones(len(train_anomaly_files))
@@ -52,39 +57,23 @@ class MimiiDataset(Dataset):
 
         return train_file_list, train_labels
 
-    def _test_file_list(self, device):
+    def _test_file_list(self, device, id):
         query = os.path.abspath(
-            f"{self.audio_dir}/{device}/target_test/*_normal_*.wav"
+            f"{self.audio_dir}/{device}/test/normal_id_0{id}*.wav"
         )
-        test_trg_normal_files = sorted(glob.glob(query))
-        test_trg_normal_labels = np.zeros(len(test_trg_normal_files))
+        test_normal_files = sorted(glob.glob(query))
+        test_normal_labels = np.zeros(len(test_normal_files))
 
         query = os.path.abspath(
-            f"{self.audio_dir}/{device}/target_test/*_anomaly_*.wav"
+            f"{self.audio_dir}/{device}/test/anomaly_id_0{id}*.wav"
         )
-        test_trg_anomaly_files = sorted(glob.glob(query))
-        test_trg_anomaly_labels = np.ones(len(test_trg_anomaly_files))
+        test_anomaly_files = sorted(glob.glob(query))
+        test_anomaly_labels = np.ones(len(test_anomaly_files))
 
-        query = os.path.abspath(
-            f"{self.audio_dir}/{device}/source_test/*_normal_*.wav"
-        )
-        test_src_normal_files = sorted(glob.glob(query))
-        test_src_normal_labels = np.zeros(len(test_src_normal_files))
-
-        query = os.path.abspath(
-            f"{self.audio_dir}/{device}/source_test/*_anomaly_*.wav"
-        )
-        test_src_anomaly_files = sorted(glob.glob(query))
-        test_src_anomaly_labels = np.ones(len(test_src_anomaly_files))
-
-        test_file_list = np.concatenate((test_trg_normal_files,
-                                         test_trg_anomaly_files,
-                                         test_src_normal_files,
-                                         test_src_anomaly_files), axis=0)
-        test_labels = np.concatenate((test_trg_normal_labels,
-                                      test_trg_anomaly_labels,
-                                      test_src_normal_labels,
-                                      test_src_anomaly_labels), axis=0)
+        test_file_list = np.concatenate((test_normal_files,
+                                         test_anomaly_files), axis=0)
+        test_labels = np.concatenate((test_normal_labels,
+                                      test_anomaly_labels), axis=0)
 
         return test_file_list, test_labels
 
@@ -119,9 +108,9 @@ class MimiiDataset(Dataset):
             sr=self.sr,
             center=self.center, norm=self.norm, htk=True,
             y=waveform.numpy()
-        )  # melspectrogram
+        )
 
-        logmelspec = librosa.power_to_db(melspec)  # log-melspectrogram
+        logmelspec = librosa.power_to_db(melspec)
 
         return logmelspec
 
@@ -133,7 +122,7 @@ class MimiiDataset(Dataset):
             sr=self.sr,
             center=self.center, norm=self.norm, htk=True,
             y=waveform.numpy()
-        )  # melspectrogram
+        )
 
         return melspec
 
@@ -172,16 +161,32 @@ class MimiiDataset(Dataset):
 
         return tonnetz
 
-    def _derive_data(self, file_list):
-        tr2tensor = transforms.Compose([transforms.PILToTensor()])
+    def get_audios(self, file_list):
         data = []
         for i in range(len(file_list)):
             y, sr = torchaudio.load(file_list[i])
-            spec = self.get_melspectrogram(y)
-            spec = self.spectrogrameToImage(spec)
-            spec = spec.convert('RGB')
-            vectors = tr2tensor(spec)
+            data.append(y)
 
-            data.append(vectors)
+        return data
+
+    def _derive_data(self, file_list):
+        train_data = []
+        test_data = []
+        train_mode = True
+        for file_list in [self.train_files, self.test_files]:
+            tr2tensor = transforms.Compose([transforms.PILToTensor()])
+            data = []
+            for j in range(len(file_list)):
+                y, sr = torchaudio.load(file_list[j])
+                spec = self.get_melspectrogram(y)
+                spec = self.spectrogrameToImage(spec)
+                spec = spec.convert('RGB')
+                vectors = tr2tensor(spec)
+                if train_mode:
+                    train_data.append(vectors)
+                else:
+                    test_data.append(vectors)
+
+            train_mode = False
 
         return data

@@ -190,3 +190,43 @@ class MimiiDataset(Dataset):
             train_mode = False
 
         return data
+
+def mean_mfccs(wave_list):
+    data = []
+    for wave in wave_list:
+        mfcc = np.mean(dataset.get_mfcc(wave)[0], axis=1)
+        data.append(mfcc)
+
+    return data
+
+def mean_stfts(wave_list):
+    data = []
+    for wave in wave_list:
+        stft = np.mean(dataset.get_chroma_stft(wave)[0], axis=1)
+        data.append(stft)
+
+    return data
+
+def mean_melspecs(wave_list):
+    data = []
+    for wave in wave_list:
+        melspec = np.mean(dataset.get_melspectrogram(wave)[0], axis=1)
+        data.append(melspec)
+
+    return data
+
+def mean_spec_contrasts(wave_list):
+    data = []
+    for wave in wave_list:
+        spec_contrast = np.mean(dataset.get_spectral_contrast(wave)[0], axis=1)
+        data.append(spec_contrast)
+
+    return data
+
+def mean_tonnetzs(wave_list):
+    data = []
+    for wave in wave_list:
+        tonnetz = np.mean(dataset.get_tonnetz(wave)[0], axis=1)
+        data.append(tonnetz)
+
+    return data

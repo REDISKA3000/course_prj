@@ -45,5 +45,4 @@ class UNet_FC(nn.Module):
 
         x10 = self.out(con4)
 
-        # return decoded
         return x10

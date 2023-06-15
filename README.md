@@ -32,7 +32,7 @@ evaluation datasets.
 Link on the original dataset: https://zenodo.org/record/3678171
 
 ## Existing solutions 
-Here you can enjoy my detailed report about existing solutions for this task: https://drive.google.com/file/d/1n3pOZw1yYKsznO3HC8BSL1l8mx5kRMlx/view?usp=sharing
+Here you can enjoy my detailed report about existing solutions for this task: https://drive.google.com/file/d/13cyOd-QIAqzsxega2YLHtJOIpMjr0wMy/view?usp=sharing
 ## The pipeline of my solution
 ![model_pipeline drawio](https://github.com/REDISKA3000/course_prj/assets/49620289/2d53b8c4-143c-470c-b765-21678687e622)
 ## Comparison of metric scores
